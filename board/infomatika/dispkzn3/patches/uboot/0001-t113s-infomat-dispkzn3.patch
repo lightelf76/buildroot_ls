@@ -1,9 +1,3 @@
-From 2cd0a770a3f7161647e6671a1b271e8281202414 Mon Sep 17 00:00:00 2001
-From: lightelf76 <valerygaynullin@yandex.ru>
-Date: Thu, 16 Jul 2026 21:05:47 +0300
-Subject: move changes to 2026.04 branch
-
-
 diff --git a/configs/infomat_dispkzn3_defconfig b/configs/infomat_dispkzn3_defconfig
 new file mode 100644
 index 00000000000..9ddb02386da
@@ -57,10 +51,10 @@ index fd357ab0d4e..74d4ebba1a8 100644
  };
 diff --git a/dts/upstream/src/arm/allwinner/sun8i-t113s-infomat-dispkzn3.dts b/dts/upstream/src/arm/allwinner/sun8i-t113s-infomat-dispkzn3.dts
 new file mode 100644
-index 00000000000..dd21d2dea68
+index 00000000000..a71a2ab956b
 --- /dev/null
 +++ b/dts/upstream/src/arm/allwinner/sun8i-t113s-infomat-dispkzn3.dts
-@@ -0,0 +1,129 @@
+@@ -0,0 +1,149 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +// Copyright (C) 2022 Arm Ltd.
 +
@@ -107,6 +101,27 @@ index 00000000000..dd21d2dea68
 +		vin-supply = <&reg_vcc5v>;
 +	};
 +
++	reg_usb0_vbus: usb0-vbus {
++		compatible = "regulator-fixed";
++		regulator-name = "usb0-vbus";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++		enable-active-high;
++		gpio = <&pio 1 9 GPIO_ACTIVE_HIGH>;
++		status = "disabled";
++	};
++
++	reg_usb1_vbus: usb1-vbus {
++		compatible = "regulator-fixed";
++		regulator-name = "usb1-vbus";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++		regulator-boot-on;
++		enable-active-high;
++		gpio = <&pio 7 6 GPIO_ACTIVE_HIGH>;
++		status = "disabled";
++	};
++
 +};
 +
 +&dcxo {
@@ -126,7 +141,7 @@ index 00000000000..dd21d2dea68
 +	pinctrl-names = "default";
 +	phy-handle = <&ext_rmii_phy>;
 +	phy-mode = "rmii";
-+	phy-supply = <&reg_vcc_3v3>;
++	phy-supply = <&reg_3v3>;
 +	status = "okay";
 +};
 +
@@ -161,7 +176,6 @@ index 00000000000..dd21d2dea68
 +	status = "okay";
 +};
 +
-+/* The USB-C socket has its CC pins pulled to GND, so is hardwired as a UFP. */
 +&usb_otg {
 +	dr_mode = "host";
 +	status = "okay";
