@@ -33,10 +33,10 @@ index 432b1c10f92..8e5d439be1d 100644
  	sunxi_gpio_set_cfgpin(SUNXI_GPA(3), SUNIV_GPE_UART0);
 diff --git a/configs/infomat_dispkzn3_defconfig b/configs/infomat_dispkzn3_defconfig
 new file mode 100644
-index 00000000000..9789517ca08
+index 00000000000..30b5a1d1095
 --- /dev/null
 +++ b/configs/infomat_dispkzn3_defconfig
-@@ -0,0 +1,17 @@
+@@ -0,0 +1,19 @@
 +CONFIG_ARM=y
 +CONFIG_ARCH_SUNXI=y
 +CONFIG_DEFAULT_DEVICE_TREE="allwinner/sun8i-t113s-infomat-dispkzn3"
@@ -54,6 +54,8 @@ index 00000000000..9789517ca08
 +CONFIG_CONS_INDEX=2
 +CONFIG_UART1_PORT_E=y
 +CONFIG_I2C3_PORT_B=y
++CONFIG_MMC_BROKEN_CD=y
++
 diff --git a/drivers/pinctrl/sunxi/pinctrl-sunxi.c b/drivers/pinctrl/sunxi/pinctrl-sunxi.c
 index fd357ab0d4e..74d4ebba1a8 100644
 --- a/drivers/pinctrl/sunxi/pinctrl-sunxi.c
