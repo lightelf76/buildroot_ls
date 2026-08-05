@@ -1,3 +1,23 @@
+diff --git a/arch/arm/boot/dts/allwinner/Makefile b/arch/arm/boot/dts/allwinner/Makefile
+index f71392a55..711ab0c0f 100644
+--- a/arch/arm/boot/dts/allwinner/Makefile
++++ b/arch/arm/boot/dts/allwinner/Makefile
+@@ -201,6 +201,7 @@ DTC_FLAGS_sun8i-h3-orangepi-pc := -@
+ DTC_FLAGS_sun8i-h3-bananapi-m2-plus-v1.2 := -@
+ DTC_FLAGS_sun8i-h3-orangepi-pc-plus := -@
+ DTC_FLAGS_sun8i-t113s-netcube-nagami-basic-carrier := -@
++DTC_FLAGS_sun8i-t113s-infomat-dispkzn3 := -@
+ DTC_FLAGS_sun8i-v3s-netcube-kumquat := -@
+ dtb-$(CONFIG_MACH_SUN8I) += \
+ 	sun8i-a23-evb.dtb \
+@@ -263,6 +264,7 @@ dtb-$(CONFIG_MACH_SUN8I) += \
+ 	sun8i-t113s-mangopi-mq-r-t113.dtb \
+ 	sun8i-t113s-netcube-nagami-basic-carrier.dtb \
+ 	sun8i-t113s-netcube-nagami-keypad-carrier.dtb \
++	sun8i-t113s-infomat-dispkzn3.dtb \
+ 	sun8i-t3-cqa3t-bv3.dtb \
+ 	sun8i-v3-sl631-imx179.dtb \
+ 	sun8i-v3s-anbernic-rg-nano.dtb \
 diff --git a/arch/arm/boot/dts/allwinner/sun8i-t113s-infomat-dispkzn3.dts b/arch/arm/boot/dts/allwinner/sun8i-t113s-infomat-dispkzn3.dts
 new file mode 100644
 index 000000000..06ec9bbde
