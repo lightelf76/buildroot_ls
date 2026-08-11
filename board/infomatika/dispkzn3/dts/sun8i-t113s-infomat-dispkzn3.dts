@@ -95,7 +95,6 @@
 		compatible = "atmel,24c02";		/* actually it's a 24AA02E48 */
 		reg = <0x50>;
 		pagesize = <16>;
-		read-only;
 		vcc-supply = <&reg_vcc3v3>;
 
 		#address-cells = <1>;
