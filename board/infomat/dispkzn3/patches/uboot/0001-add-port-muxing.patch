@@ -1,0 +1,61 @@
+diff --git a/arch/arm/mach-sunxi/Kconfig b/arch/arm/mach-sunxi/Kconfig
+index ceba96b61..ab48701ff 100644
+--- a/arch/arm/mach-sunxi/Kconfig
++++ b/arch/arm/mach-sunxi/Kconfig
+@@ -905,6 +905,13 @@ config UART0_PORT_F
+ 	at the same time, the system can be only booted in the FEL mode.
+ 	Only enable this if you really know what you are doing.
+ 
++config UART1_PORT_E
++	bool "UART1 on PE10,PE11"
++	depends on MACH_SUN8I_R528
++	---help---
++	Use pins PE10, PE11 for UART1 serial console.
++	Only enable this if you really know what you are doing.
++
+ config OLD_SUNXI_KERNEL_COMPAT
+ 	bool "Enable workarounds for booting old kernels"
+ 	---help---
+diff --git a/arch/arm/mach-sunxi/board.c b/arch/arm/mach-sunxi/board.c
+index 432b1c10f..9f00f7b6b 100644
+--- a/arch/arm/mach-sunxi/board.c
++++ b/arch/arm/mach-sunxi/board.c
+@@ -169,6 +169,10 @@ static int gpio_init(void)
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPG(3), SUN5I_GPG_UART1);
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPG(4), SUN5I_GPG_UART1);
+ 	sunxi_gpio_set_pull(SUNXI_GPG(4), SUNXI_GPIO_PULL_UP);
++#elif CONFIG_CONS_INDEX == 2 && defined(CONFIG_MACH_SUN8I_R528) && defined(CONFIG_UART1_PORT_E)
++	sunxi_gpio_set_cfgpin(SUNXI_GPE(10), 2);
++	sunxi_gpio_set_cfgpin(SUNXI_GPE(11), 2);
++	sunxi_gpio_set_pull(SUNXI_GPE(11), SUNXI_GPIO_PULL_UP);
+ #elif CONFIG_CONS_INDEX == 3 && defined(CONFIG_MACH_SUN8I_H3)
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPA(0), SUN8I_H3_GPA_UART2);
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPA(1), SUN8I_H3_GPA_UART2);
+diff --git a/drivers/pinctrl/sunxi/pinctrl-sunxi.c b/drivers/pinctrl/sunxi/pinctrl-sunxi.c
+index a8632aeaf..74d4ebba1 100644
+--- a/drivers/pinctrl/sunxi/pinctrl-sunxi.c
++++ b/drivers/pinctrl/sunxi/pinctrl-sunxi.c
+@@ -603,7 +603,11 @@ static const struct sunxi_pinctrl_function sun20i_d1_pinctrl_functions[] = {
+ 	{ "gpio_in",	0 },
+ 	{ "gpio_out",	1 },
+ 	{ "i2c0",	4 },	/* PB10-PB11 */
++#if IS_ENABLED(CONFIG_I2C3_PORT_B)
++	{ "i2c3",	4 },	/* PB6-PB7 */
++#else
+ 	{ "i2c3",	3 },	/* PG10-PG11 */
++#endif
+ 	{ "mmc0",	2 },	/* PF0-PF5 */
+ 	{ "mmc1",	2 },	/* PG0-PG5 */
+ 	{ "mmc2",	3 },	/* PC2-PC7 */
+@@ -613,7 +617,11 @@ static const struct sunxi_pinctrl_function sun20i_d1_pinctrl_functions[] = {
+ #else
+ 	{ "uart0",	6 },	/* PB0-PB1, PB8-PB9, PE2-PE3 */
+ #endif
++#if IS_ENABLED(CONFIG_UART1_PORT_E)
++	{ "uart1",	3 },	/* PE10-PE11 */
++#else
+ 	{ "uart1",	2 },	/* PG6-PG7 */
++#endif
+ 	{ "uart2",	7 },	/* PB0-PB1 */
+ 	{ "uart3",	7 },	/* PB6-PB7 */
+ };
