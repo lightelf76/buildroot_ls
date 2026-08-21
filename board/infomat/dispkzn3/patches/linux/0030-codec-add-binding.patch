@@ -1,0 +1,104 @@
+diff --git a/Documentation/devicetree/bindings/sound/allwinner,sun4i-a10-codec.yaml b/Documentation/devicetree/bindings/sound/allwinner,sun4i-a10-codec.yaml
+index 78273647f766..cd9e2ca5783c 100644
+--- a/Documentation/devicetree/bindings/sound/allwinner,sun4i-a10-codec.yaml
++++ b/Documentation/devicetree/bindings/sound/allwinner,sun4i-a10-codec.yaml
+@@ -22,6 +22,7 @@ properties:
+       - allwinner,sun8i-a23-codec
+       - allwinner,sun8i-h3-codec
+       - allwinner,sun8i-v3s-codec
++      - allwinner,sun20i-d1-codec
+ 
+   reg:
+     maxItems: 1
+@@ -29,15 +30,9 @@ properties:
+   interrupts:
+     maxItems: 1
+ 
+-  clocks:
+-    items:
+-      - description: Bus Clock
+-      - description: Module Clock
++  clocks: true
+ 
+-  clock-names:
+-    items:
+-      - const: apb
+-      - const: codec
++  clock-names: true
+ 
+   dmas:
+     items:
+@@ -103,6 +98,36 @@ required:
+ 
+ allOf:
+   - $ref: dai-common.yaml#
++  - if:
++      properties:
++        compatible:
++          const: allwinner,sun20i-d1-codec
++    then:
++      properties:
++        clocks:
++          items:
++            - description: Bus Clock
++            - description: ADC Module Clock
++            - description: DAC Module Clock
++
++        clock-names:
++          items:
++            - const: apb
++            - const: adc
++            - const: dac
++
++    else:
++      properties:
++        clocks:
++          items:
++            - description: Bus Clock
++            - description: Module Clock
++
++        clock-names:
++          items:
++            - const: apb
++            - const: codec
++
+   - if:
+       properties:
+         compatible:
+@@ -111,6 +136,7 @@ allOf:
+             - allwinner,sun8i-a23-codec
+             - allwinner,sun8i-h3-codec
+             - allwinner,sun8i-v3s-codec
++            - allwinner,sun20i-d1-codec
+ 
+     then:
+       if:
+@@ -229,6 +255,28 @@ allOf:
+               - Mic
+               - Speaker
+ 
++  - if:
++      properties:
++        compatible:
++          enum:
++            - allwinner,sun20i-d1-codec
++
++    then:
++      properties:
++        allwinner,audio-routing:
++          items:
++            enum:
++              - HP
++              - LINEIN
++              - MIC3
++              - MBIAS
++              - Headphone
++              - Headset Mic
++              - Line In
++              - Line Out
++              - Mic
++              - Speaker
++
+ unevaluatedProperties: false
+ 
+ examples:

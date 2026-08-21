@@ -1,0 +1,21 @@
+diff --git a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
+b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
+index 78aa61607..c4ce809be 100644
+--- a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
++++ b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
+@@ -108,6 +108,15 @@ i2s1_dout0_pin: i2s1-dout0-pin {
+ 				function = "i2s1_dout";
+ 			};
+ 
++			/omit-if-no-ref/
++			lcd_lvds0_pins: lcd-lvds0-pins {
++				pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5",
++				       "PD6", "PD7", "PD8", "PD9";
++				function = "lvds0";
++				drive-strength = <30>;
++				bias-disable;
++			};
++
+ 			/omit-if-no-ref/
+ 			lcd_rgb666_pins: lcd-rgb666-pins {
+ 				pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5",
