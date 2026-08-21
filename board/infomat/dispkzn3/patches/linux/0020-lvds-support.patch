@@ -1,0 +1,344 @@
+diff --git a/Documentation/devicetree/bindings/display/allwinner,sun4i-a10-tcon.yaml b/Documentation/devicetree/bindings/display/allwinner,sun4i-a10-tcon.yaml
+index 724d93b91..52589341f 100644
+--- a/Documentation/devicetree/bindings/display/allwinner,sun4i-a10-tcon.yaml
++++ b/Documentation/devicetree/bindings/display/allwinner,sun4i-a10-tcon.yaml
+@@ -115,6 +115,12 @@ properties:
+           - const: edp
+           - const: lvds
+ 
++  phys:
++    maxItems: 1
++
++  phy-names:
++    const: combo-phy
++
+   ports:
+     $ref: /schemas/graph.yaml#/properties/ports
+ 
+diff --git a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
+index 7b8486492..ab52b3da6 100644
+--- a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
++++ b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
+@@ -114,6 +114,15 @@ i2s1_dout0_pin: i2s1-dout0-pin {
+ 				function = "i2s1_dout";
+ 			};
+ 
++			/omit-if-no-ref/
++			lcd_lvds0_pins: lcd-lvds0-pins {
++				pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5",
++				       "PD6", "PD7", "PD8", "PD9";
++				function = "lvds0";
++				drive-strength = <30>;
++				bias-disable;
++			};
++
+ 			/omit-if-no-ref/
+ 			lcd_rgb666_pins: lcd-rgb666-pins {
+ 				pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5",
+@@ -932,6 +941,8 @@ tcon_lcd0: lcd-controller@5461000 {
+ 			resets = <&ccu RST_BUS_TCON_LCD0>,
+ 				 <&ccu RST_BUS_LVDS0>;
+ 			reset-names = "lcd", "lvds";
++			phys = <&dphy>;
++			phy-names = "combo-phy";
+ 			#clock-cells = <0>;
+ 
+ 			ports {
+diff --git a/drivers/gpu/drm/sun4i/sun4i_tcon.c b/drivers/gpu/drm/sun4i/sun4i_tcon.c
+index 960e83c82..eca36529e 100644
+--- a/drivers/gpu/drm/sun4i/sun4i_tcon.c
++++ b/drivers/gpu/drm/sun4i/sun4i_tcon.c
+@@ -12,6 +12,7 @@
+ #include <linux/module.h>
+ #include <linux/of.h>
+ #include <linux/of_platform.h>
++#include <linux/phy/phy.h>
+ #include <linux/platform_device.h>
+ #include <linux/regmap.h>
+ #include <linux/reset.h>
+@@ -170,6 +171,66 @@ static void sun6i_tcon_setup_lvds_phy(struct sun4i_tcon *tcon,
+ 			  SUN6I_TCON0_LVDS_ANA0_EN_DRVD(val));
+ }
+ 
++static void sun20i_tcon_setup_lvds_dphy(struct sun4i_tcon *tcon,
++					const struct drm_encoder *encoder)
++{
++        struct drm_connector *connector;
++        struct drm_display_info *info;
++	union phy_configure_opts opts = { };
++
++        connector = sun4i_tcon_get_connector(encoder);
++        if (!connector)
++                return;
++  
++        info = &connector->display_info;
++        if (info->num_bus_formats != 1)
++                return;
++  
++        switch (info->bus_formats[0]) {
++        case MEDIA_BUS_FMT_RGB666_1X7X3_SPWG:
++        case MEDIA_BUS_FMT_RGB888_1X7X4_JEIDA:
++        case MEDIA_BUS_FMT_RGB101010_1X7X5_JEIDA:
++                regmap_update_bits(tcon->regs, SUN4I_TCON0_LVDS_IF_REG,
++                                   SUN4I_TCON0_LVDS_IF_MODE,
++                                   SUN4I_TCON0_LVDS_IF_MODE);
++                break;
++        case MEDIA_BUS_FMT_RGB888_1X7X4_SPWG:
++        case MEDIA_BUS_FMT_RGB101010_1X7X5_SPWG:
++                regmap_update_bits(tcon->regs, SUN4I_TCON0_LVDS_IF_REG,
++                                   SUN4I_TCON0_LVDS_IF_MODE,
++                                   0);
++                break;
++        }
++
++	if (!tcon->quirks->has_combo_dphy || !tcon->dphy)
++		return;
++
++	if (phy_init(tcon->dphy))
++		return;
++
++	if (phy_set_mode(tcon->dphy, PHY_MODE_LVDS))
++		return;
++
++	if (phy_configure(tcon->dphy, &opts))
++		return;
++
++	if (phy_power_on(tcon->dphy))
++		return;
++}
++
++static void sun20i_tcon_teardown_lvds_dphy(struct sun4i_tcon *tcon,
++					  const struct drm_encoder *encoder)
++{
++	if (!tcon->quirks->has_combo_dphy || !tcon->dphy)
++		return;
++
++	if (phy_power_off(tcon->dphy))
++		return;
++
++	if (phy_exit(tcon->dphy))
++		return;
++}
++
+ static void sun4i_tcon_lvds_set_status(struct sun4i_tcon *tcon,
+ 				       const struct drm_encoder *encoder,
+ 				       bool enabled)
+@@ -183,6 +244,8 @@ static void sun4i_tcon_lvds_set_status(struct sun4i_tcon *tcon,
+ 	} else {
+ 		regmap_update_bits(tcon->regs, SUN4I_TCON0_LVDS_IF_REG,
+ 				   SUN4I_TCON0_LVDS_IF_EN, 0);
++		if (tcon->quirks->teardown_lvds_phy)
++			tcon->quirks->teardown_lvds_phy(tcon, encoder);
+ 	}
+ }
+ 
+@@ -482,7 +545,9 @@ static void sun4i_tcon0_mode_set_lvds(struct sun4i_tcon *tcon,
+ 	else
+ 		reg |= SUN4I_TCON0_LVDS_IF_BITWIDTH_18BITS;
+ 
+-	regmap_write(tcon->regs, SUN4I_TCON0_LVDS_IF_REG, reg);
++        regmap_update_bits(tcon->regs, SUN4I_TCON0_LVDS_IF_REG,
++                           SUN4I_TCON0_LVDS_IF_CLK_SEL_TCON0 | SUN4I_TCON0_LVDS_IF_BITWIDTH_MASK,
++                           reg);
+ 
+ 	/* Setup the polarity of the various signals */
+ 	if (!(mode->flags & DRM_MODE_FLAG_PHSYNC))
+@@ -1224,6 +1289,15 @@ static int sun4i_tcon_bind(struct device *dev, struct device *master,
+ 		goto err_assert_reset;
+ 	}
+ 
++	if (tcon->quirks->has_combo_dphy) {
++		tcon->dphy = devm_phy_get(dev, "combo-phy");
++		if (IS_ERR(tcon->dphy)) {
++			dev_err(dev, "Couldn't get the combo D-PHY\n");
++			ret = PTR_ERR(tcon->dphy);
++			goto err_free_dclk;
++		}
++	}
++
+ 	if (tcon->quirks->has_channel_0) {
+ 		ret = sun4i_dclk_create(dev, tcon);
+ 		if (ret) {
+@@ -1538,8 +1612,12 @@ static const struct sun4i_tcon_quirks sun9i_a80_tcon_tv_quirks = {
+ 
+ static const struct sun4i_tcon_quirks sun20i_d1_lcd_quirks = {
+ 	.has_channel_0		= true,
++	.has_combo_dphy		= true,
++	.supports_lvds		= true,
+ 	.dclk_min_div		= 1,
+ 	.set_mux		= sun8i_r40_tcon_tv_set_mux,
++	.setup_lvds_phy		= sun20i_tcon_setup_lvds_dphy,
++	.teardown_lvds_phy	= sun20i_tcon_teardown_lvds_dphy,
+ };
+ 
+ /* sun4i_drv uses this list to check if a device node is a TCON */
+diff --git a/drivers/gpu/drm/sun4i/sun4i_tcon.h b/drivers/gpu/drm/sun4i/sun4i_tcon.h
+index fa23aa23f..01c7be466 100644
+--- a/drivers/gpu/drm/sun4i/sun4i_tcon.h
++++ b/drivers/gpu/drm/sun4i/sun4i_tcon.h
+@@ -99,6 +99,7 @@
+ 
+ #define SUN4I_TCON0_LVDS_IF_REG			0x84
+ #define SUN4I_TCON0_LVDS_IF_EN				BIT(31)
++#define SUN4I_TCON0_LVDS_IF_MODE                        BIT(27)
+ #define SUN4I_TCON0_LVDS_IF_BITWIDTH_MASK		BIT(26)
+ #define SUN4I_TCON0_LVDS_IF_BITWIDTH_18BITS		(1 << 26)
+ #define SUN4I_TCON0_LVDS_IF_BITWIDTH_24BITS		(0 << 26)
+@@ -239,6 +240,7 @@ struct sun4i_tcon_quirks {
+ 	bool	has_channel_0;	/* a83t does not have channel 0 on second TCON */
+ 	bool	has_channel_1;	/* a33 does not have channel 1 */
+ 	bool	has_lvds_alt;	/* Does the LVDS clock have a parent other than the TCON clock? */
++	bool	has_combo_dphy; /* Is the D-PHY used for LVDS output? */
+ 	bool	needs_de_be_mux; /* sun6i needs mux to select backend */
+ 	bool    needs_edp_reset; /* a80 edp reset needed for tcon0 access */
+ 	bool	supports_lvds;   /* Does the TCON support an LVDS output? */
+@@ -250,6 +252,8 @@ struct sun4i_tcon_quirks {
+ 	/* handler for LVDS setup routine */
+ 	void	(*setup_lvds_phy)(struct sun4i_tcon *tcon,
+ 				  const struct drm_encoder *encoder);
++	void	(*teardown_lvds_phy)(struct sun4i_tcon *tcon,
++				     const struct drm_encoder *encoder);
+ };
+ 
+ struct sun4i_tcon {
+@@ -282,6 +286,9 @@ struct sun4i_tcon {
+ 	/* Associated crtc */
+ 	struct sun4i_crtc		*crtc;
+ 
++	/* Associated D-PHY */
++	struct phy			*dphy;
++
+ 	int				id;
+ 
+ 	/* TCON list management */
+diff --git a/drivers/phy/allwinner/phy-sun6i-mipi-dphy.c b/drivers/phy/allwinner/phy-sun6i-mipi-dphy.c
+index 36eab9527..57035b3a4 100644
+--- a/drivers/phy/allwinner/phy-sun6i-mipi-dphy.c
++++ b/drivers/phy/allwinner/phy-sun6i-mipi-dphy.c
+@@ -166,8 +166,8 @@
+ #define SUN50I_COMBO_PHY_REG0_EN_CP		BIT(0)
+ 
+ #define SUN50I_COMBO_PHY_REG1		0x114
+-#define SUN50I_COMBO_PHY_REG2_REG_VREF1P6(n)	(((n) & 0x7) << 4)
+-#define SUN50I_COMBO_PHY_REG2_REG_VREF0P8(n)	((n) & 0x7)
++#define SUN50I_COMBO_PHY_REG1_REG_VREF1P6(n)	(((n) & 0x7) << 4)
++#define SUN50I_COMBO_PHY_REG1_REG_VREF0P8(n)	((n) & 0x7)
+ 
+ #define SUN50I_COMBO_PHY_REG2		0x118
+ #define SUN50I_COMBO_PHY_REG2_HS_STOP_DLY(n)	((n) & 0xff)
+@@ -181,7 +181,9 @@ struct sun6i_dphy;
+ 
+ struct sun6i_dphy_variant {
+ 	void	(*tx_power_on)(struct sun6i_dphy *dphy);
++	void	(*lvds_power_on)(struct sun6i_dphy *dphy);
+ 	bool	rx_supported;
++	bool	is_combo_dphy;
+ };
+ 
+ struct sun6i_dphy {
+@@ -222,6 +224,18 @@ static int sun6i_dphy_configure(struct phy *phy, union phy_configure_opts *opts)
+ 	return 0;
+ }
+ 
++static int sun6i_dphy_set_mode(struct phy *phy, enum phy_mode mode, int submode)
++{
++	struct sun6i_dphy *dphy = phy_get_drvdata(phy);
++
++	if (mode == PHY_MODE_LVDS && !dphy->variant->is_combo_dphy) {
++		/* Not a combo D-PHY: LVDS is not supported. */
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
+ static void sun6i_a31_mipi_dphy_tx_power_on(struct sun6i_dphy *dphy)
+ {
+ 	u8 lanes_mask = GENMASK(dphy->config.lanes - 1, 0);
+@@ -329,6 +343,43 @@ static void sun50i_a100_mipi_dphy_tx_power_on(struct sun6i_dphy *dphy)
+ 	udelay(1);
+ }
+ 
++static void sun50i_a100_mipi_dphy_lvds_power_on(struct sun6i_dphy *dphy)
++{
++	regmap_write(dphy->regs, SUN50I_COMBO_PHY_REG1,
++		     SUN50I_COMBO_PHY_REG1_REG_VREF1P6(4) |
++		     SUN50I_COMBO_PHY_REG1_REG_VREF0P8(3));
++
++	regmap_write(dphy->regs, SUN50I_COMBO_PHY_REG0,
++		     SUN50I_COMBO_PHY_REG0_EN_CP);
++	udelay(5);
++
++	regmap_update_bits(dphy->regs, SUN50I_COMBO_PHY_REG0,
++			   SUN50I_COMBO_PHY_REG0_EN_LVDS,
++			   SUN50I_COMBO_PHY_REG0_EN_LVDS);
++	udelay(5);
++
++	regmap_update_bits(dphy->regs, SUN50I_COMBO_PHY_REG0,
++			   SUN50I_COMBO_PHY_REG0_EN_COMBOLDO,
++			   SUN50I_COMBO_PHY_REG0_EN_COMBOLDO);
++	udelay(5);
++
++	regmap_update_bits(dphy->regs, SUN50I_COMBO_PHY_REG0,
++			   SUN50I_COMBO_PHY_REG0_EN_MIPI,
++			   SUN50I_COMBO_PHY_REG0_EN_MIPI);
++
++	regmap_write(dphy->regs, SUN6I_DPHY_ANA4_REG,
++		     SUN6I_DPHY_ANA4_REG_EN_MIPI |
++		     SUN6I_DPHY_ANA4_REG_IB(2));
++
++	regmap_write(dphy->regs, SUN6I_DPHY_ANA3_REG,
++		     SUN6I_DPHY_ANA3_EN_LDOR |
++		     SUN6I_DPHY_ANA3_EN_LDOD);
++
++	regmap_write(dphy->regs, SUN6I_DPHY_ANA2_REG, 0);
++
++	regmap_write(dphy->regs, SUN6I_DPHY_ANA1_REG, 0);
++}
++
+ static int sun6i_dphy_tx_power_on(struct sun6i_dphy *dphy)
+ {
+ 	u8 lanes_mask = GENMASK(dphy->config.lanes - 1, 0);
+@@ -492,6 +543,13 @@ static int sun6i_dphy_power_on(struct phy *phy)
+ {
+ 	struct sun6i_dphy *dphy = phy_get_drvdata(phy);
+ 
++	if (phy->attrs.mode == PHY_MODE_LVDS && dphy->variant->is_combo_dphy) {
++		if (!dphy->variant->lvds_power_on)
++			return -EINVAL;
++		dphy->variant->lvds_power_on(dphy);
++		return 0;
++	}
++
+ 	switch (dphy->direction) {
+ 	case SUN6I_DPHY_DIRECTION_TX:
+ 		return sun6i_dphy_tx_power_on(dphy);
+@@ -514,6 +572,11 @@ static int sun6i_dphy_power_off(struct phy *phy)
+ 	regmap_write(dphy->regs, SUN6I_DPHY_ANA3_REG, 0);
+ 	regmap_write(dphy->regs, SUN6I_DPHY_ANA4_REG, 0);
+ 
++	if (phy->attrs.mode == PHY_MODE_LVDS && dphy->variant->is_combo_dphy) {
++		regmap_write(dphy->regs, SUN50I_COMBO_PHY_REG1, 0);
++		regmap_write(dphy->regs, SUN50I_COMBO_PHY_REG0, 0);
++	}
++
+ 	return 0;
+ }
+ 
+@@ -533,6 +596,7 @@ static const struct phy_ops sun6i_dphy_ops = {
+ 	.configure	= sun6i_dphy_configure,
+ 	.power_on	= sun6i_dphy_power_on,
+ 	.power_off	= sun6i_dphy_power_off,
++	.set_mode	= sun6i_dphy_set_mode,
+ 	.init		= sun6i_dphy_init,
+ 	.exit		= sun6i_dphy_exit,
+ };
+@@ -619,6 +683,8 @@ static const struct sun6i_dphy_variant sun6i_a31_mipi_dphy_variant = {
+ 
+ static const struct sun6i_dphy_variant sun50i_a100_mipi_dphy_variant = {
+ 	.tx_power_on	= sun50i_a100_mipi_dphy_tx_power_on,
++	.lvds_power_on	= sun50i_a100_mipi_dphy_lvds_power_on,
++	.is_combo_dphy	= true,
+ };
+ 
+ static const struct of_device_id sun6i_dphy_of_table[] = {
