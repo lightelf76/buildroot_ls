@@ -1,8 +1,8 @@
-diff --git a/arch/arm/boot/dts/allwinner/sun8i-t113s-infomat-dispkzn3.dts b/arch/arm/boot/dts/allwinner/sun8i-t113s-infomat-dispkzn3.dts
-index 011d37924..bf437802f 100644
---- a/arch/arm/boot/dts/allwinner/sun8i-t113s-infomat-dispkzn3.dts
-+++ b/arch/arm/boot/dts/allwinner/sun8i-t113s-infomat-dispkzn3.dts
-@@ -62,10 +62,50 @@ reg_usb1_vbus: usb1-vbus {
+diff --git a/dts/upstream/src/arm/allwinner/sun8i-t113s-infomat-dispkzn3.dts b/dts/upstream/src/arm/allwinner/sun8i-t113s-infomat-dispkzn3.dts
+index 011d37924..856a6274d 100644
+--- a/dts/upstream/src/arm/allwinner/sun8i-t113s-infomat-dispkzn3.dts
++++ b/dts/upstream/src/arm/allwinner/sun8i-t113s-infomat-dispkzn3.dts
+@@ -62,10 +62,49 @@
  		regulator-max-microvolt = <5000000>;
  		regulator-boot-on;
  		enable-active-high;
@@ -28,7 +28,6 @@ index 011d37924..bf437802f 100644
 +		pwms = <&pwm 7 500000 PWM_POLARITY_NORMAL>;
 +		brightness-levels = <0 10 20 30 40 50 60 70 80 90 100>;
 +		default-brightness-level = <7>;
-+		enable-gpios = <&pio 3 22 GPIO_ACTIVE_HIGH>; /* PD22 */
 +	};
 +};
 +
@@ -54,7 +53,7 @@ index 011d37924..bf437802f 100644
  };
  
  &dcxo {
-@@ -132,10 +172,6 @@ &mmc0 {
+@@ -132,10 +171,6 @@
  	pinctrl-names = "default";
  	vmmc-supply = <&reg_vcc3v3>;
  	non-removable;
