@@ -1,8 +1,16 @@
 diff --git a/dts/upstream/src/arm/allwinner/sun8i-t113s-infomat-dispkzn3.dts b/dts/upstream/src/arm/allwinner/sun8i-t113s-infomat-dispkzn3.dts
-index 856a6274d..2b200d4c9 100644
+index 856a6274d..63dca4273 100644
 --- a/dts/upstream/src/arm/allwinner/sun8i-t113s-infomat-dispkzn3.dts
 +++ b/dts/upstream/src/arm/allwinner/sun8i-t113s-infomat-dispkzn3.dts
-@@ -51,7 +51,6 @@
+@@ -4,6 +4,7 @@
+ #include <dt-bindings/interrupt-controller/irq.h>
+ #include <dt-bindings/gpio/gpio.h>
+ #include <dt-bindings/leds/common.h>
++#include <dt-bindings/pwm/pwm.h>
+ 
+ /dts-v1/;
+ 
+@@ -51,7 +52,6 @@
  		regulator-min-microvolt = <5000000>;
  		regulator-max-microvolt = <5000000>;
  		enable-active-high;
@@ -10,7 +18,7 @@ index 856a6274d..2b200d4c9 100644
  		status = "disabled";
  	};
  
-@@ -62,7 +61,6 @@
+@@ -62,7 +62,6 @@
  		regulator-max-microvolt = <5000000>;
  		regulator-boot-on;
  		enable-active-high;
@@ -18,7 +26,7 @@ index 856a6274d..2b200d4c9 100644
  		status = "disabled";
  	};
  
-@@ -86,7 +84,7 @@
+@@ -86,7 +85,7 @@
  	};
  };
  
@@ -27,7 +35,7 @@ index 856a6274d..2b200d4c9 100644
  	status = "okay";
  };
  
-@@ -94,19 +92,23 @@
+@@ -94,19 +93,23 @@
  	status = "okay";
  };
  
