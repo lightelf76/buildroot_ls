@@ -11,6 +11,18 @@ index 42346bedf..898ce15c6 100644
  	status = "okay";
  };
  
+diff --git a/arch/arm/configs/sunxi_defconfig b/arch/arm/configs/sunxi_defconfig
+index f4b8d8f7d..42c8d7aee 100644
+--- a/arch/arm/configs/sunxi_defconfig
++++ b/arch/arm/configs/sunxi_defconfig
+@@ -157,6 +157,7 @@ CONFIG_IIO=y
+ CONFIG_AXP20X_ADC=y
+ CONFIG_PWM=y
+ CONFIG_PWM_SUN4I=y
++CONFIG_PWM_SUN8I=y
+ CONFIG_PHY_SUN4I_USB=y
+ CONFIG_PHY_SUN9I_USB=y
+ CONFIG_NVMEM_SUNXI_SID=y
 diff --git a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
 index ab52b3da6..e87035263 100644
 --- a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
