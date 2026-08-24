@@ -1,5 +1,5 @@
 diff --git a/dts/upstream/src/arm/allwinner/sun8i-t113s-infomat-dispkzn3.dts b/dts/upstream/src/arm/allwinner/sun8i-t113s-infomat-dispkzn3.dts
-index 856a6274d..63dca4273 100644
+index 856a6274d..5ca2267ab 100644
 --- a/dts/upstream/src/arm/allwinner/sun8i-t113s-infomat-dispkzn3.dts
 +++ b/dts/upstream/src/arm/allwinner/sun8i-t113s-infomat-dispkzn3.dts
 @@ -4,6 +4,7 @@
@@ -26,7 +26,15 @@ index 856a6274d..63dca4273 100644
  		status = "disabled";
  	};
  
-@@ -86,7 +85,7 @@
+@@ -80,13 +79,14 @@
+ 
+ 	backlight: backlight {
+ 		compatible = "pwm-backlight";
+-		pwms = <&pwm 7 500000 PWM_POLARITY_NORMAL>;
++		power-supply = <&reg_vcc5v>;
++		pwms = <&pwm 7 500000 0>;
+ 		brightness-levels = <0 10 20 30 40 50 60 70 80 90 100>;
+ 		default-brightness-level = <7>;
  	};
  };
  
@@ -35,7 +43,7 @@ index 856a6274d..63dca4273 100644
  	status = "okay";
  };
  
-@@ -94,19 +93,23 @@
+@@ -94,19 +94,23 @@
  	status = "okay";
  };
  
