@@ -1,0 +1,31 @@
+diff --git a/arch/arm/boot/dts/allwinner/sun8i-t113s-infomat-dispkzn3.dts b/arch/arm/boot/dts/allwinner/sun8i-t113s-infomat-dispkzn3.dts
+index 62fb3aab4..daf9c7dbb 100644
+--- a/arch/arm/boot/dts/allwinner/sun8i-t113s-infomat-dispkzn3.dts
++++ b/arch/arm/boot/dts/allwinner/sun8i-t113s-infomat-dispkzn3.dts
+@@ -140,14 +140,12 @@ eeprom0: eeprom@50 {
+ 		reg = <0x50>;
+ 		pagesize = <16>;
+ 		vcc-supply = <&reg_vcc3v3>;
+-/*
+ 		#address-cells = <1>;
+ 		#size-cells = <1>;
+ 
+ 		eth0_macaddress: macaddress@fa {
+ 			reg = <0xfa 0x06>;
+ 		};
+-*/
+ 	};
+ };
+ 
+@@ -158,10 +156,9 @@ &ledc {
+ };
+ 
+ &emac {
+-/*
+ 	nvmem-cells = <&eth0_macaddress>;
+ 	nvmem-cell-names = "mac-address";
+-*/
++
+ 	pinctrl-0 = <&rmii_pe_pins>;
+ 	pinctrl-names = "default";
+ 	phy-handle = <&ext_rmii_phy>;
