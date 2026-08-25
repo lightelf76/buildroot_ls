@@ -1,0 +1,57 @@
+diff --git a/arch/arm/boot/dts/allwinner/sun8i-t113s-infomat-dispkzn3.dts b/arch/arm/boot/dts/allwinner/sun8i-t113s-infomat-dispkzn3.dts
+index 898ce15c6..e9507ad0b 100644
+--- a/arch/arm/boot/dts/allwinner/sun8i-t113s-infomat-dispkzn3.dts
++++ b/arch/arm/boot/dts/allwinner/sun8i-t113s-infomat-dispkzn3.dts
+@@ -151,6 +151,12 @@ eth0_macaddress: macaddress@fa {
+ 	};
+ };
+ 
++&ledc {
++	pinctrl-0 = <&ledc_pg_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++};
++
+ &emac {
+ /*
+ 	nvmem-cells = <&eth0_macaddress>;
+diff --git a/arch/arm/configs/sunxi_defconfig b/arch/arm/configs/sunxi_defconfig
+index 42c8d7aee..578e0bea9 100644
+--- a/arch/arm/configs/sunxi_defconfig
++++ b/arch/arm/configs/sunxi_defconfig
+@@ -152,6 +152,12 @@ CONFIG_STAGING_MEDIA=y
+ CONFIG_VIDEO_SUNXI=y
+ CONFIG_VIDEO_SUNXI_CEDRUS=y
+ CONFIG_MAILBOX=y
++# LEDC
++CONFIG_NEW_LEDS=y
++CONFIG_LEDS_CLASS=y
++CONFIG_LEDS_CLASS_MULTICOLOR=y
++CONFIG_LEDS_USER=y
++CONFIG_LEDS_SUN50I_A100=y
+ # CONFIG_IOMMU_SUPPORT is not set
+ CONFIG_IIO=y
+ CONFIG_AXP20X_ADC=y
+diff --git a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
+index e87035263..b9fe257f9 100644
+--- a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
++++ b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
+@@ -351,6 +351,18 @@ pwm7_pg_pin: pwm7-pg-pin {
+ 				function = "pwm7";
+ 			};
+ 
++			/omit-if-no-ref/
++			ledc_pe_pin: ledc-pe-pin {
++				pins = "PE5";
++				function = "ledc";
++			};
++
++			/omit-if-no-ref/
++			ledc_pg_pin: ledc-pg-pin {
++				pins = "PG13";
++				function = "ledc";
++			};
++
+ 		};
+ 
+ 		pwm: pwm@2000c00 {
