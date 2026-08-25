@@ -1,5 +1,5 @@
 diff --git a/arch/arm/boot/dts/allwinner/sun8i-t113s-infomat-dispkzn3.dts b/arch/arm/boot/dts/allwinner/sun8i-t113s-infomat-dispkzn3.dts
-index 62fb3aab4..daf9c7dbb 100644
+index 62fb3aab4..fef626b31 100644
 --- a/arch/arm/boot/dts/allwinner/sun8i-t113s-infomat-dispkzn3.dts
 +++ b/arch/arm/boot/dts/allwinner/sun8i-t113s-infomat-dispkzn3.dts
 @@ -140,14 +140,12 @@ eeprom0: eeprom@50 {
@@ -10,7 +10,8 @@ index 62fb3aab4..daf9c7dbb 100644
  		#address-cells = <1>;
  		#size-cells = <1>;
  
- 		eth0_macaddress: macaddress@fa {
+-		eth0_macaddress: macaddress@fa {
++		eth0_macaddress: eth0_macaddress@fa {
  			reg = <0xfa 0x06>;
  		};
 -*/
