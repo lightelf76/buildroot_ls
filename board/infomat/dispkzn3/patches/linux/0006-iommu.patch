@@ -1,0 +1,146 @@
+diff --git a/Documentation/devicetree/bindings/iommu/allwinner,sun50i-h6-iommu.yaml b/Documentation/devicetree/bindings/iommu/allwinner,sun50i-h6-iommu.yaml
+index a8409db4a..905d99034 100644
+--- a/Documentation/devicetree/bindings/iommu/allwinner,sun50i-h6-iommu.yaml
++++ b/Documentation/devicetree/bindings/iommu/allwinner,sun50i-h6-iommu.yaml
+@@ -18,7 +18,9 @@ properties:
+ 
+   compatible:
+     oneOf:
+-      - const: allwinner,sun50i-h6-iommu
++      - enum: 
++          - allwinner,sun20i-d1-iommu
++          - allwinner,sun50i-h6-iommu
+       - const: allwinner,sun50i-h616-iommu
+       - items:
+           - const: allwinner,sun55i-a523-iommu
+@@ -42,8 +44,22 @@ required:
+   - reg
+   - interrupts
+   - clocks
+-  - resets
+ 
++if:
++  properties:
++    compatible:
++      contains:
++        enum:
++          - allwinner,sun50i-h6-iommu
++
++then:
++  required:
++    - resets
++
++else:
++  properties:
++    resets: false
++ 
+ additionalProperties: false
+ 
+ examples:
+diff --git a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
+index b9fe257f9..5419c6d22 100644
+--- a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
++++ b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
+@@ -426,6 +426,14 @@ ths: thermal-sensor@2009400 {
+ 			#thermal-sensor-cells = <0>;
+ 		};
+ 
++		iommu: iommu@2010000 {
++			compatible = "allwinner,sun20i-d1-iommu";
++			reg = <0x2010000 0x10000>;
++			interrupts = <SOC_PERIPHERAL_IRQ(64) IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_IOMMU>;
++			#iommu-cells = <1>;
++		};
++
+ 		dmic: dmic@2031000 {
+ 			compatible = "allwinner,sun20i-d1-dmic",
+ 				     "allwinner,sun50i-h6-dmic";
+@@ -931,6 +939,7 @@ mixer0: mixer@5100000 {
+ 				 <&display_clocks CLK_MIXER0>;
+ 			clock-names = "bus", "mod";
+ 			resets = <&display_clocks RST_MIXER0>;
++			iommus = <&iommu 2>;
+ 
+ 			ports {
+ 				#address-cells = <1>;
+@@ -953,6 +962,7 @@ mixer1: mixer@5200000 {
+ 				 <&display_clocks CLK_MIXER1>;
+ 			clock-names = "bus", "mod";
+ 			resets = <&display_clocks RST_MIXER1>;
++			iommus = <&iommu 2>;
+ 
+ 			ports {
+ 				#address-cells = <1>;
+diff --git a/drivers/iommu/sun50i-iommu.c b/drivers/iommu/sun50i-iommu.c
+index 6306570d5..fe7322f69 100644
+--- a/drivers/iommu/sun50i-iommu.c
++++ b/drivers/iommu/sun50i-iommu.c
+@@ -97,6 +97,10 @@
+ 
+ #define SPAGE_SIZE			4096
+ 
++struct sun50i_iommu_variant {
++	bool has_reset;
++};
++
+ struct sun50i_iommu {
+ 	struct iommu_device iommu;
+ 
+@@ -444,6 +448,9 @@ static int sun50i_iommu_enable(struct sun50i_iommu *iommu)
+ 
+ 	spin_lock_irqsave(&iommu->iommu_lock, flags);
+ 
++	/* Hack: disable bypass on H616/D1 IOMMU like H6's default state */
++        iommu_write(iommu, IOMMU_BYPASS_REG, 0);
++
+ 	iommu_write(iommu, IOMMU_TTB_REG, sun50i_domain->dt_dma);
+ 	iommu_write(iommu, IOMMU_TLB_PREFETCH_REG,
+ 		    IOMMU_TLB_PREFETCH_MASTER_ENABLE(0) |
+@@ -996,9 +1003,14 @@ static irqreturn_t sun50i_iommu_irq(int irq, void *dev_id)
+ 
+ static int sun50i_iommu_probe(struct platform_device *pdev)
+ {
++	const struct sun50i_iommu_variant *variant;
+ 	struct sun50i_iommu *iommu;
+ 	int ret, irq;
+ 
++	variant = of_device_get_match_data(&pdev->dev);
++	if (!variant)
++		return -EINVAL;
++	
+ 	iommu = devm_kzalloc(&pdev->dev, sizeof(*iommu), GFP_KERNEL);
+ 	if (!iommu)
+ 		return -ENOMEM;
+@@ -1033,7 +1045,10 @@ static int sun50i_iommu_probe(struct platform_device *pdev)
+ 		goto err_free_cache;
+ 	}
+ 
+-	iommu->reset = devm_reset_control_get(&pdev->dev, NULL);
++	/* iommu->reset = devm_reset_control_get(&pdev->dev, NULL);*/
++	if (variant->has_reset)
++		iommu->reset = devm_reset_control_get_exclusive(&pdev->dev, NULL);
++
+ 	if (IS_ERR(iommu->reset)) {
+ 		dev_err(&pdev->dev, "Couldn't get our reset line.\n");
+ 		ret = PTR_ERR(iommu->reset);
+@@ -1068,9 +1083,17 @@ static int sun50i_iommu_probe(struct platform_device *pdev)
+ 	return ret;
+ }
+ 
++static const struct sun50i_iommu_variant sun20i_d1_iommu = {
++};
++
++static const struct sun50i_iommu_variant sun50i_h6_iommu = {
++	.has_reset = true,
++};
++
+ static const struct of_device_id sun50i_iommu_dt[] = {
+-	{ .compatible = "allwinner,sun50i-h6-iommu", },
+-	{ .compatible = "allwinner,sun50i-h616-iommu", },
++	{ .compatible = "allwinner,sun20i-d1-iommu", .data = &sun20i_d1_iommu },
++	{ .compatible = "allwinner,sun50i-h6-iommu", .data = &sun50i_h6_iommu },
++	{ .compatible = "allwinner,sun50i-h616-iommu", .data = &sun50i_h6_iommu },
+ 	{ /* sentinel */ },
+ };
+ MODULE_DEVICE_TABLE(of, sun50i_iommu_dt);
