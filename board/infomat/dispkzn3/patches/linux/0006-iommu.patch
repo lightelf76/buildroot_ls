@@ -144,3 +144,17 @@ index 6306570d5..fe7322f69 100644
  	{ /* sentinel */ },
  };
  MODULE_DEVICE_TABLE(of, sun50i_iommu_dt);
+diff --git a/arch/arm/configs/sunxi_defconfig b/arch/arm/configs/sunxi_defconfig
+index c3b885337..9cd96640d 100644
+--- a/arch/arm/configs/sunxi_defconfig
++++ b/arch/arm/configs/sunxi_defconfig
+@@ -199,7 +199,8 @@ CONFIG_LEDS_CLASS=y
+ CONFIG_LEDS_CLASS_MULTICOLOR=y
+ CONFIG_LEDS_USER=y
+ CONFIG_LEDS_SUN50I_A100=y
+-# CONFIG_IOMMU_SUPPORT is not set
++CONFIG_IOMMU_SUPPORT=y
++CONFIG_SUN50I_IOMMU=y
+ CONFIG_IIO=y
+ CONFIG_AXP20X_ADC=y
+ CONFIG_PWM=y
