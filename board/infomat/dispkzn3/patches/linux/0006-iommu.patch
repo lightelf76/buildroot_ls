@@ -36,14 +36,22 @@ index c3b885337..9cd96640d 100644
  CONFIG_AXP20X_ADC=y
  CONFIG_PWM=y
 diff --git a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
-index b9fe257f9..9b880b708 100644
+index b9fe257f9..7c0936918 100644
 --- a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
 +++ b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
-@@ -425,6 +425,13 @@ ths: thermal-sensor@2009400 {
+@@ -25,6 +25,7 @@ de: display-engine {
+ 		compatible = "allwinner,sun20i-d1-display-engine";
+ 		allwinner,pipelines = <&mixer0>, <&mixer1>;
+ 		status = "disabled";
++		iommus = <&iommu 2>;
+ 	};
+ 
+ 	soc {
+@@ -425,6 +426,13 @@ ths: thermal-sensor@2009400 {
  			nvmem-cell-names = "calibration";
  			#thermal-sensor-cells = <0>;
  		};
-+		iommu: iommu at 2010000 {
++		iommu: iommu@2010000 {
 +			compatible = "allwinner,sun20i-d1-iommu";
 +			reg = <0x2010000 0x10000>;
 +			interrupts = <SOC_PERIPHERAL_IRQ(64) IRQ_TYPE_LEVEL_HIGH>;
@@ -53,23 +61,7 @@ index b9fe257f9..9b880b708 100644
  
  		dmic: dmic@2031000 {
  			compatible = "allwinner,sun20i-d1-dmic",
-@@ -931,6 +938,7 @@ mixer0: mixer@5100000 {
- 				 <&display_clocks CLK_MIXER0>;
- 			clock-names = "bus", "mod";
- 			resets = <&display_clocks RST_MIXER0>;
-+			iommus = <&iommu 2>;
- 
- 			ports {
- 				#address-cells = <1>;
-@@ -953,6 +961,7 @@ mixer1: mixer@5200000 {
- 				 <&display_clocks CLK_MIXER1>;
- 			clock-names = "bus", "mod";
- 			resets = <&display_clocks RST_MIXER1>;
-+			iommus = <&iommu 2>;
- 
- 			ports {
- 				#address-cells = <1>;
-@@ -968,6 +977,17 @@ mixer1_out_tcon_top_mixer1: endpoint {
+@@ -968,6 +976,17 @@ mixer1_out_tcon_top_mixer1: endpoint {
  			};
  		};
  
