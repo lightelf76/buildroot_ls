@@ -1,0 +1,39 @@
+diff --git a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
+index 7c0936918..d95c185ce 100644
+--- a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
++++ b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
+@@ -35,6 +35,18 @@ soc {
+ 		#address-cells = <1>;
+ 		#size-cells = <1>;
+ 
++		ve: video-codec@1c0e000 {
++			compatible = "allwinner,sun20i-d1-video-engine";
++			reg = <0x1c0e000 0x2000>;
++			interrupts = <SOC_PERIPHERAL_IRQ(66) IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_VE>,
++				 <&ccu CLK_VE>,
++				 <&ccu CLK_MBUS_VE>;
++			clock-names = "ahb", "mod", "ram";
++			resets = <&ccu RST_BUS_VE>;
++			iommus = <&iommu 0>;
++		};
++
+ 		pio: pinctrl@2000000 {
+ 			compatible = "allwinner,sun20i-d1-pinctrl";
+ 			reg = <0x2000000 0x800>;
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus.c b/drivers/staging/media/sunxi/cedrus/cedrus.c
+index 6de345b4e..c3f8a0952 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus.c
+@@ -285,8 +285,10 @@ static int cedrus_init_ctrls(struct cedrus_dev *dev, struct cedrus_ctx *ctx)
+ 	ctrl_size = sizeof(ctrl) * CEDRUS_CONTROLS_COUNT + 1;
+ 
+ 	ctx->ctrls = kzalloc(ctrl_size, GFP_KERNEL);
+-	if (!ctx->ctrls)
++	if (!ctx->ctrls) {
++		v4l2_ctrl_handler_free(hdl);
+ 		return -ENOMEM;
++	}
+ 
+ 	j = 0;
+ 	for (i = 0; i < CEDRUS_CONTROLS_COUNT; i++) {
