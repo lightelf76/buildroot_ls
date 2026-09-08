@@ -11,7 +11,7 @@ FREERDP3_LICENSE = Apache-2.0
 FREERDP3_LICENSE_FILES = LICENSE
 FREERDP3_INSTALL_STAGING = YES
 
-# явно указываем CMake в качестве системы сборки
+# ќтключаем всЄ лишнее, включаем только SDL2
 FREERDP3_CONF_OPTS = \
     -DWITH_MANPAGES=OFF \
     -DWITH_SDL2=ON \
@@ -23,19 +23,14 @@ FREERDP3_CONF_OPTS = \
     -DWITH_GSTREAMER_1_0=OFF \
     -DWITH_CUPS=OFF \
     -DWITH_PULSEAUDIO=OFF \
-    -DWITH_ALSA=OFF
+    -DWITH_ALSA=OFF \
+    -DWITH_OPENGL=OFF         # принудительно отключаем OpenGL, чтобы не т€нуть EGL/GBM
 
-# ”бедимс€, что SDL2 собран с поддержкой KMS/DRM
 FREERDP3_DEPENDENCIES = \
     sdl2 \
     openssl \
     zlib \
     libglib2 \
     libdrm
-
-# ƒл€ ARM с NEON можно включить оптимизацию
-ifeq ($(BR2_ARM_CPU_HAS_NEON),y)
-    FREERDP3_CONF_OPTS += -DWITH_NEON=ON
-endif
 
 $(eval $(cmake-package))
