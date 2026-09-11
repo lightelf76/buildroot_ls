@@ -1,0 +1,13 @@
+config BR2_PACKAGE_LIBVA_V4L2
+	bool "libva-intel-driver"
+	depends on BR2_TOOLCHAIN_HAS_THREADS # libdrm/libpthread-stubs
+	depends on !BR2_STATIC_LIBS # libva
+	select BR2_PACKAGE_LIBVA
+	select BR2_PACKAGE_LIBDRM
+	help
+	  VA-API back-end driver for V4L2 
+
+	  https://01.org/vaapi
+
+comment "libva intel driver needs a toolchain w/ threads, dynamic library"
+	depends on !BR2_TOOLCHAIN_HAS_THREADS || BR2_STATIC_LIBS
