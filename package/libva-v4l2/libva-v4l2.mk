@@ -4,7 +4,6 @@
 #
 ################################################################################
 
-#LIBVA_V4L2_DRIVER_VERSION = 74b336a
 LIBVA_V4L2_VERSION = master
 LIBVA_V4L2_SITE = https://github.com/mxsrc/libva-v4l2.git
 LIBVA_V4L2_SITE_METHOD = git
