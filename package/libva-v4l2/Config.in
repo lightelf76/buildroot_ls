@@ -1,5 +1,5 @@
 config BR2_PACKAGE_LIBVA_V4L2
-	bool "libva-intel-driver"
+	bool "libva-v4l2-driver"
 	depends on BR2_TOOLCHAIN_HAS_THREADS # libdrm/libpthread-stubs
 	depends on !BR2_STATIC_LIBS # libva
 	select BR2_PACKAGE_LIBVA
