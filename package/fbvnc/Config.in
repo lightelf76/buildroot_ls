@@ -1,0 +1,11 @@
+config BR2_PACKAGE_FBVNC
+	bool "fbvnc"
+	help
+	  A small VNC client for Linux framebuffer.
+
+	  Fbvnc is a small VNC client for Linux framebuffer. Without
+	  arguments, it connects to port 5900 of 127.0.0.1. Once
+	  connected, it sends keyboard and mouse inputs to the VNC
+	  server and updates the screen when necessary.
+
+	  https://github.com/lightelf76/fbvnc
