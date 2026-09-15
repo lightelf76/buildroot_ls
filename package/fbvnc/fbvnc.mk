@@ -4,8 +4,8 @@
 #
 ################################################################################
 
-FBVNC_VERSION = 1.0
-FBVNC_SITE = $(call github,lightelf76,fbvnc,v$(FBVNC_VERSION))
+FBVNC_VERSION = 15092026
+FBVNC_SITE = $(call github,lightelf76,fbvnc,$(FBVNC_VERSION))
 FBVNC_LICENSE = ISC
 FBVNC_LICENSE_FILES = README
 
