@@ -103,3 +103,31 @@ index f4b8d8f7d..47f1f55c6 100644
  CONFIG_PHY_SUN4I_USB=y
  CONFIG_PHY_SUN9I_USB=y
  CONFIG_NVMEM_SUNXI_SID=y
+diff --git a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
+index 2441a1c62..046dda037 100644
+--- a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
++++ b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
+@@ -25,7 +25,6 @@ de: display-engine {
+ 		compatible = "allwinner,sun20i-d1-display-engine";
+ 		allwinner,pipelines = <&mixer0>, <&mixer1>;
+ 		status = "disabled";
+-		iommus = <&iommu 2>;
+ 	};
+ 
+ 	soc {
+@@ -970,6 +969,7 @@ mixer0: mixer@5100000 {
+ 				 <&display_clocks CLK_MIXER0>;
+ 			clock-names = "bus", "mod";
+ 			resets = <&display_clocks RST_MIXER0>;
++			iommus = <&iommu 2>;
+ 
+ 			ports {
+ 				#address-cells = <1>;
+@@ -992,6 +992,7 @@ mixer1: mixer@5200000 {
+ 				 <&display_clocks CLK_MIXER1>;
+ 			clock-names = "bus", "mod";
+ 			resets = <&display_clocks RST_MIXER1>;
++			iommus = <&iommu 2>;
+ 
+ 			ports {
+ 				#address-cells = <1>;
