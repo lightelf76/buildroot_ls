@@ -132,35 +132,43 @@ index 2441a1c62..046dda037 100644
  			ports {
  				#address-cells = <1>;
 diff --git a/drivers/iommu/sun50i-iommu.c b/drivers/iommu/sun50i-iommu.c
-index 3db5a81d6..e11e2f57d 100644
+index 3db5a81d6..89e0fdaf3 100644
 --- a/drivers/iommu/sun50i-iommu.c
 +++ b/drivers/iommu/sun50i-iommu.c
-@@ -724,8 +724,7 @@ static void sun50i_iommu_domain_free(struct iommu_domain *domain)
+@@ -724,17 +724,28 @@ static void sun50i_iommu_domain_free(struct iommu_domain *domain)
  static int sun50i_iommu_attach_domain(struct sun50i_iommu *iommu,
  				      struct sun50i_iommu_domain *sun50i_domain)
  {
 -	iommu->domain = &sun50i_domain->domain;
 -	sun50i_domain->iommu = iommu;
-+        int ret;
++	int ret;
  
  	sun50i_domain->dt_dma = dma_map_single(iommu->dev, sun50i_domain->dt,
- 					       DT_SIZE, DMA_TO_DEVICE);
-@@ -734,7 +733,13 @@ static int sun50i_iommu_attach_domain(struct sun50i_iommu *iommu,
+-					       DT_SIZE, DMA_TO_DEVICE);
++						DT_SIZE, DMA_TO_DEVICE);
+ 	if (dma_mapping_error(iommu->dev, sun50i_domain->dt_dma)) {
+ 		dev_err(iommu->dev, "Couldn't map L1 Page Table\n");
  		return -ENOMEM;
  	}
  
 -	return sun50i_iommu_enable(iommu);
-+	ret = sun50i_iommu_enable(iommu);
-+	if (ret)
-+		return ret;
-+
 +	iommu->domain = &sun50i_domain->domain;
 +	sun50i_domain->iommu = iommu;
++
++	ret = sun50i_iommu_enable(iommu);
++	if (ret) {
++		iommu->domain = &sun50i_iommu_identity_domain;
++		sun50i_domain->iommu = NULL;
++		dma_unmap_single(iommu->dev, sun50i_domain->dt_dma,
++				 DT_SIZE, DMA_TO_DEVICE);
++		return ret;
++	}
++
 +	return 0;
  }
  
  static void sun50i_iommu_detach_domain(struct sun50i_iommu *iommu,
-@@ -817,9 +822,7 @@ static int sun50i_iommu_attach_device(struct iommu_domain *domain,
+@@ -817,9 +828,7 @@ static int sun50i_iommu_attach_device(struct iommu_domain *domain,
  
  	sun50i_iommu_identity_attach(&sun50i_iommu_identity_domain, dev, old);
  
