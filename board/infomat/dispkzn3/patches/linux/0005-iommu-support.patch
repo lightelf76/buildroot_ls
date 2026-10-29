@@ -1,0 +1,100 @@
+diff --git a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
+index 2441a1c62..046dda037 100644
+--- a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
++++ b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
+@@ -25,7 +25,6 @@ de: display-engine {
+ 		compatible = "allwinner,sun20i-d1-display-engine";
+ 		allwinner,pipelines = <&mixer0>, <&mixer1>;
+ 		status = "disabled";
+-		iommus = <&iommu 2>;
+ 	};
+ 
+ 	soc {
+@@ -970,6 +969,7 @@ mixer0: mixer@5100000 {
+ 				 <&display_clocks CLK_MIXER0>;
+ 			clock-names = "bus", "mod";
+ 			resets = <&display_clocks RST_MIXER0>;
++			iommus = <&iommu 2>;
+ 
+ 			ports {
+ 				#address-cells = <1>;
+@@ -992,6 +992,7 @@ mixer1: mixer@5200000 {
+ 				 <&display_clocks CLK_MIXER1>;
+ 			clock-names = "bus", "mod";
+ 			resets = <&display_clocks RST_MIXER1>;
++			iommus = <&iommu 2>;
+ 
+ 			ports {
+ 				#address-cells = <1>;
+diff --git a/drivers/iommu/sun50i-iommu.c b/drivers/iommu/sun50i-iommu.c
+index 3db5a81d6..17f79ce77 100644
+--- a/drivers/iommu/sun50i-iommu.c
++++ b/drivers/iommu/sun50i-iommu.c
+@@ -721,22 +721,6 @@ static void sun50i_iommu_domain_free(struct iommu_domain *domain)
+ 	kfree(sun50i_domain);
+ }
+ 
+-static int sun50i_iommu_attach_domain(struct sun50i_iommu *iommu,
+-				      struct sun50i_iommu_domain *sun50i_domain)
+-{
+-	iommu->domain = &sun50i_domain->domain;
+-	sun50i_domain->iommu = iommu;
+-
+-	sun50i_domain->dt_dma = dma_map_single(iommu->dev, sun50i_domain->dt,
+-					       DT_SIZE, DMA_TO_DEVICE);
+-	if (dma_mapping_error(iommu->dev, sun50i_domain->dt_dma)) {
+-		dev_err(iommu->dev, "Couldn't map L1 Page Table\n");
+-		return -ENOMEM;
+-	}
+-
+-	return sun50i_iommu_enable(iommu);
+-}
+-
+ static void sun50i_iommu_detach_domain(struct sun50i_iommu *iommu,
+ 				       struct sun50i_iommu_domain *sun50i_domain)
+ {
+@@ -797,6 +781,33 @@ static struct iommu_domain sun50i_iommu_identity_domain = {
+ 	.ops = &sun50i_iommu_identity_ops,
+ };
+ 
++static int sun50i_iommu_attach_domain(struct sun50i_iommu *iommu,
++				      struct sun50i_iommu_domain *sun50i_domain)
++{
++	int ret;
++
++	sun50i_domain->dt_dma = dma_map_single(iommu->dev, sun50i_domain->dt,
++						DT_SIZE, DMA_TO_DEVICE);
++	if (dma_mapping_error(iommu->dev, sun50i_domain->dt_dma)) {
++		dev_err(iommu->dev, "Couldn't map L1 Page Table\n");
++		return -ENOMEM;
++	}
++
++	iommu->domain = &sun50i_domain->domain;
++	sun50i_domain->iommu = iommu;
++
++	ret = sun50i_iommu_enable(iommu);
++	if (ret) {
++		iommu->domain = &sun50i_iommu_identity_domain;
++		sun50i_domain->iommu = NULL;
++		dma_unmap_single(iommu->dev, sun50i_domain->dt_dma,
++				 DT_SIZE, DMA_TO_DEVICE);
++		return ret;
++	}
++
++	return 0;
++}
++
+ static int sun50i_iommu_attach_device(struct iommu_domain *domain,
+ 				      struct device *dev,
+ 				      struct iommu_domain *old)
+@@ -817,9 +828,7 @@ static int sun50i_iommu_attach_device(struct iommu_domain *domain,
+ 
+ 	sun50i_iommu_identity_attach(&sun50i_iommu_identity_domain, dev, old);
+ 
+-	sun50i_iommu_attach_domain(iommu, sun50i_domain);
+-
+-	return 0;
++	return sun50i_iommu_attach_domain(iommu, sun50i_domain);
+ }
+ 
+ static struct iommu_device *sun50i_iommu_probe_device(struct device *dev)
