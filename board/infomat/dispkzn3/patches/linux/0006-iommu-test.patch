@@ -1,0 +1,207 @@
+diff --git a/arch/arm/configs/sunxi_defconfig b/arch/arm/configs/sunxi_defconfig
+index 47f1f55c6..82f841e13 100644
+--- a/arch/arm/configs/sunxi_defconfig
++++ b/arch/arm/configs/sunxi_defconfig
+@@ -15,7 +15,7 @@ CONFIG_VFP=y
+ CONFIG_NEON=y
+ CONFIG_MODULES=y
+ CONFIG_MODULE_UNLOAD=y
+-CONFIG_CMA=y
++# CONFIG_CMA=y
+ CONFIG_NET=y
+ CONFIG_PACKET=y
+ CONFIG_UNIX=y
+@@ -191,6 +191,7 @@ CONFIG_VIDEO_SUNXI_CEDRUS=y
+ CONFIG_MAILBOX=y
+ CONFIG_IOMMU_SUPPORT=y
+ CONFIG_SUN50I_IOMMU=y
++CONFIG_IOMMU_DEFAULT_PASSTHROUGH=y
+ CONFIG_IIO=y
+ CONFIG_AXP20X_ADC=y
+ CONFIG_PWM=y
+diff --git a/drivers/gpu/drm/drm_gem_dma_helper.c b/drivers/gpu/drm/drm_gem_dma_helper.c
+index 4f0320df8..4bf764f3b 100644
+--- a/drivers/gpu/drm/drm_gem_dma_helper.c
++++ b/drivers/gpu/drm/drm_gem_dma_helper.c
+@@ -144,12 +144,15 @@ struct drm_gem_dma_object *drm_gem_dma_create(struct drm_device *drm,
+ 		return dma_obj;
+ 
+ 	if (dma_obj->map_noncoherent) {
+-		dma_obj->vaddr = dma_alloc_noncoherent(drm->dev, size,
++//30102026		dma_obj->vaddr = dma_alloc_noncoherent(drm->dev, 
++		dma_obj->vaddr = dma_alloc_noncoherent(drm_dev_dma_dev(drm),
++						       size,
+ 						       &dma_obj->dma_addr,
+ 						       DMA_TO_DEVICE,
+ 						       GFP_KERNEL | __GFP_NOWARN);
+ 	} else {
+-		dma_obj->vaddr = dma_alloc_wc(drm->dev, size,
++//30102026		dma_obj->vaddr = dma_alloc_wc(drm->dev, size,
++		dma_obj->vaddr = dma_alloc_wc(drm_dev_dma_dev(drm), size,
+ 					      &dma_obj->dma_addr,
+ 					      GFP_KERNEL | __GFP_NOWARN);
+ 	}
+@@ -234,12 +237,17 @@ void drm_gem_dma_free(struct drm_gem_dma_object *dma_obj)
+ 		drm_prime_gem_destroy(gem_obj, dma_obj->sgt);
+ 	} else if (dma_obj->vaddr) {
+ 		if (dma_obj->map_noncoherent)
+-			dma_free_noncoherent(gem_obj->dev->dev, dma_obj->base.size,
++//30102026			dma_free_noncoherent(gem_obj->dev->dev,
++			dma_free_noncoherent(drm_dev_dma_dev(gem_obj->dev),
++					     dma_obj->base.size,
+ 					     dma_obj->vaddr, dma_obj->dma_addr,
+ 					     DMA_TO_DEVICE);
+ 		else
+-			dma_free_wc(gem_obj->dev->dev, dma_obj->base.size,
+-				    dma_obj->vaddr, dma_obj->dma_addr);
++//30102026			dma_free_wc(gem_obj->dev->dev, dma_obj->base.size,
++//30102026				    dma_obj->vaddr, dma_obj->dma_addr);
++			dma_free_wc(drm_dev_dma_dev(gem_obj->dev),
++				    dma_obj->base.size, dma_obj->vaddr,
++				    dma_obj->dma_addr);
+ 	}
+ 
+ 	drm_gem_object_release(gem_obj);
+@@ -428,7 +436,8 @@ struct sg_table *drm_gem_dma_get_sg_table(struct drm_gem_dma_object *dma_obj)
+ 	if (!sgt)
+ 		return ERR_PTR(-ENOMEM);
+ 
+-	ret = dma_get_sgtable(obj->dev->dev, sgt, dma_obj->vaddr,
++//30102026	ret = dma_get_sgtable(obj->dev->dev, sgt, dma_obj->vaddr,
++	ret = dma_get_sgtable(drm_dev_dma_dev(obj->dev), sgt, dma_obj->vaddr,
+ 			      dma_obj->dma_addr, obj->size);
+ 	if (ret < 0)
+ 		goto out;
+@@ -535,12 +544,15 @@ int drm_gem_dma_mmap(struct drm_gem_dma_object *dma_obj, struct vm_area_struct *
+ 	if (dma_obj->map_noncoherent) {
+ 		vma->vm_page_prot = vm_get_page_prot(vma->vm_flags);
+ 
+-		ret = dma_mmap_pages(dma_obj->base.dev->dev,
++//30102026		ret = dma_mmap_pages(dma_obj->base.dev->dev,
++		ret = dma_mmap_pages(drm_dev_dma_dev(dma_obj->base.dev),
+ 				     vma, vma->vm_end - vma->vm_start,
+ 				     virt_to_page(dma_obj->vaddr));
+ 	} else {
+-		ret = dma_mmap_wc(dma_obj->base.dev->dev, vma, dma_obj->vaddr,
+-				  dma_obj->dma_addr,
++//30102626		ret = dma_mmap_wc(dma_obj->base.dev->dev, vma, dma_obj->vaddr,
++//30102026				  dma_obj->dma_addr,
++		ret = dma_mmap_wc(drm_dev_dma_dev(dma_obj->base.dev), vma,
++				  dma_obj->vaddr, dma_obj->dma_addr,
+ 				  vma->vm_end - vma->vm_start);
+ 	}
+ 	if (ret)
+diff --git a/drivers/gpu/drm/drm_prime.c b/drivers/gpu/drm/drm_prime.c
+index 43a10b4af..d69cff84b 100644
+--- a/drivers/gpu/drm/drm_prime.c
++++ b/drivers/gpu/drm/drm_prime.c
+@@ -858,7 +858,8 @@ struct sg_table *drm_prime_pages_to_sg(struct drm_device *dev,
+ 		return ERR_PTR(-ENOMEM);
+ 
+ 	if (dev)
+-		max_segment = dma_max_mapping_size(dev->dev);
++//30102026		max_segment = dma_max_mapping_size(dev->dev);
++		max_segment = dma_max_mapping_size(drm_dev_dma_dev(dev));
+ 	if (max_segment == 0)
+ 		max_segment = UINT_MAX;
+ 	err = sg_alloc_table_from_pages_segment(sg, pages, nr_pages, 0,
+diff --git a/drivers/gpu/drm/sun4i/sun4i_backend.c b/drivers/gpu/drm/sun4i/sun4i_backend.c
+index bb8952dc6..2a13bed2f 100644
+--- a/drivers/gpu/drm/sun4i/sun4i_backend.c
++++ b/drivers/gpu/drm/sun4i/sun4i_backend.c
+@@ -797,18 +797,33 @@ static int sun4i_backend_bind(struct device *dev, struct device *master,
+ 	dev_set_drvdata(dev, backend);
+ 	spin_lock_init(&backend->frontend_lock);
+ 
+-	if (of_property_present(dev->of_node, "interconnects")) {
+-		/*
+-		 * This assume we have the same DMA constraints for all our the
+-		 * devices in our pipeline (all the backends, but also the
+-		 * frontends). This sounds bad, but it has always been the case
+-		 * for us, and DRM doesn't do per-device allocation either, so
+-		 * we would need to fix DRM first...
+-		 */
+-		ret = of_dma_configure(drm->dev, dev->of_node, true);
+-		if (ret)
+-			return ret;
+-	}
++//30102026	if (of_property_present(dev->of_node, "interconnects")) {
++//30102026		/*
++//30102026		 * This assume we have the same DMA constraints for all our the
++//30102026		 * devices in our pipeline (all the backends, but also the
++//30102026		 * frontends). This sounds bad, but it has always been the case
++//30102026		 * for us, and DRM doesn't do per-device allocation either, so
++//30102026		 * we would need to fix DRM first...
++//30102026		 */
++//30102026		ret = of_dma_configure(drm->dev, dev->of_node, true);
++//30102026		if (ret)
++//30102026			return ret;
++//30102026	}
++	/*
++	 * This assume we have the same DMA constraints for all our the
++	 * devices in our pipeline (all the backends, but also the
++	 * frontends). This sounds bad, but it has always been the case
++	 * for us, and DRM doesn't do per-device allocation either, so
++	 * we would need to fix DRM first...
++	 *
++	 * Always use the first bound backend as the DMA device. While
++	 * our device trees always have all backends enabled, some in
++	 * the wild may actually have the first one disabled. If both
++	 * are enabled, the order in which they are bound is guaranteed
++	 * since the driver adds components in order.
++	 */
++	if (drm_dev_dma_dev(drm) == drm->dev)
++		drm_dev_set_dma_dev(drm, dev);
+ 
+ 	backend->engine.node = dev->of_node;
+ 	backend->engine.ops = &sun4i_backend_engine_ops;
+diff --git a/drivers/gpu/drm/sun4i/sun8i_mixer.c b/drivers/gpu/drm/sun4i/sun8i_mixer.c
+index 31a8409b9..8ca19322e 100644
+--- a/drivers/gpu/drm/sun4i/sun8i_mixer.c
++++ b/drivers/gpu/drm/sun4i/sun8i_mixer.c
+@@ -524,18 +524,33 @@ static int sun8i_mixer_bind(struct device *dev, struct device *master,
+ 	mixer->engine.ops = &sun8i_engine_ops;
+ 	mixer->engine.node = dev->of_node;
+ 
+-	if (of_property_present(dev->of_node, "iommus")) {
+-		/*
+-		 * This assume we have the same DMA constraints for
+-		 * all our the mixers in our pipeline. This sounds
+-		 * bad, but it has always been the case for us, and
+-		 * DRM doesn't do per-device allocation either, so we
+-		 * would need to fix DRM first...
+-		 */
+-		ret = of_dma_configure(drm->dev, dev->of_node, true);
+-		if (ret)
+-			return ret;
+-	}
++//30102026	if (of_property_present(dev->of_node, "iommus")) {
++//30102026		/*
++//30102026		 * This assume we have the same DMA constraints for
++//30102026		 * all our the mixers in our pipeline. This sounds
++//30102026		 * bad, but it has always been the case for us, and
++//30102026		 * DRM doesn't do per-device allocation either, so we
++//30102026		 * would need to fix DRM first...
++//30102026		 */
++//30102026		ret = of_dma_configure(drm->dev, dev->of_node, true);
++//30102026		if (ret)
++//30102026			return ret;
++//30102026	}
++	/*
++	 * This assume we have the same DMA constraints for all our the
++	 * devices in our pipeline (all the backends, but also the
++	 * frontends). This sounds bad, but it has always been the case
++	 * for us, and DRM doesn't do per-device allocation either, so
++	 * we would need to fix DRM first...
++	 *
++	 * Always use the first bound backend as the DMA device. While
++	 * our device trees always have all backends enabled, some in
++	 * the wild may actually have the first one disabled. If both
++	 * are enabled, the order in which they are bound is guaranteed
++	 * since the driver adds components in order.
++	 */
++	if (drm_dev_dma_dev(drm) == drm->dev)
++		drm_dev_set_dma_dev(drm, dev);
+ 
+ 	/*
+ 	 * While this function can fail, we shouldn't do anything
