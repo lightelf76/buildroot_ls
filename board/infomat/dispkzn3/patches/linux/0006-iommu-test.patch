@@ -721,13 +721,17 @@ index 70d29b14d..6610a7e79 100644
  	help
  	  Support for the IOMMU introduced in the Allwinner H6 SoCs.
 diff --git a/drivers/iommu/dma-iommu.c b/drivers/iommu/dma-iommu.c
-index 9da773ba5..158feeb4c 100644
+index 9da773ba5..dde518824 100644
 --- a/drivers/iommu/dma-iommu.c
 +++ b/drivers/iommu/dma-iommu.c
-@@ -2110,12 +2110,16 @@ EXPORT_SYMBOL_GPL(dma_iova_destroy);
- void iommu_setup_dma_ops(struct device *dev)
+@@ -2107,22 +2107,28 @@ void dma_iova_destroy(struct device *dev, struct dma_iova_state *state,
+ }
+ EXPORT_SYMBOL_GPL(dma_iova_destroy);
+ 
+-void iommu_setup_dma_ops(struct device *dev)
++void iommu_setup_dma_ops(struct device *dev, struct iommu_domain *domain)
  {
- 	struct iommu_domain *domain = iommu_get_domain_for_dev(dev);
+-	struct iommu_domain *domain = iommu_get_domain_for_dev(dev);
 +	bool dma_iommu;
  
  	if (dev_is_pci(dev))
@@ -735,31 +739,30 @@ index 9da773ba5..158feeb4c 100644
  
 -	dev->dma_iommu = iommu_is_dma_domain(domain);
 -	if (dev->dma_iommu && iommu_dma_init_domain(domain, dev))
-+//	dev->dma_iommu = iommu_is_dma_domain(domain);
-+//	if (dev->dma_iommu && iommu_dma_init_domain(domain, dev))
 +	dma_iommu = iommu_is_dma_domain(domain);
 +	dev_assign_dma_iommu(dev, dma_iommu);
 +	if (dma_iommu && iommu_dma_init_domain(domain, dev))
  		goto out_err;
  
  	return;
-@@ -2125,6 +2129,11 @@ void iommu_setup_dma_ops(struct device *dev)
- 	dev->dma_iommu = false;
- }
- 
-+void iommu_teardown_dma_ops(struct device *dev)
-+{
+ out_err:
+ 	pr_warn("Failed to set up IOMMU for device %s; retaining platform DMA ops\n",
+ 		dev_name(dev));
+-	dev->dma_iommu = false;
 +	dev_clear_dma_iommu(dev);
 +}
 +
++void iommu_teardown_dma_ops(struct device *dev)
++{
++	dev_clear_dma_iommu(dev);
+ }
+ 
  static bool has_msi_cookie(const struct iommu_domain *domain)
- {
- 	return domain && (domain->cookie_type == IOMMU_COOKIE_DMA_IOVA ||
 diff --git a/drivers/iommu/dma-iommu.h b/drivers/iommu/dma-iommu.h
-index eca201c1f..c69f84838 100644
+index eca201c1f..491d46c2c 100644
 --- a/drivers/iommu/dma-iommu.h
 +++ b/drivers/iommu/dma-iommu.h
-@@ -7,32 +7,30 @@
+@@ -7,12 +7,45 @@
  
  #include <linux/iommu.h>
  
@@ -773,80 +776,76 @@ index eca201c1f..c69f84838 100644
  
 -void iommu_setup_dma_ops(struct device *dev);
 +#include <asm/dma-iommu.h>
-+
-+#elif defined(CONFIG_IOMMU_DMA)
  
-+void iommu_setup_dma_ops(struct device *dev);
++#elif defined(CONFIG_IOMMU_DMA)
++
++void iommu_setup_dma_ops(struct device *dev, struct iommu_domain *domain);
 +void iommu_teardown_dma_ops(struct device *dev);
  int iommu_get_dma_cookie(struct iommu_domain *domain);
  void iommu_put_dma_cookie(struct iommu_domain *domain);
--void iommu_put_msi_cookie(struct iommu_domain *domain);
--
--int iommu_dma_init_fq(struct iommu_domain *domain);
--
--void iommu_dma_get_resv_regions(struct device *dev, struct list_head *list);
--
--int iommu_dma_sw_msi(struct iommu_domain *domain, struct msi_desc *desc,
--		     phys_addr_t msi_addr);
--
--extern bool iommu_dma_forcedac;
- 
--#else /* CONFIG_IOMMU_DMA */
++
 +#else 
- 
- static inline void iommu_setup_dma_ops(struct device *dev)
- {
- }
- 
--static inline int iommu_dma_init_fq(struct iommu_domain *domain)
++
++static inline void iommu_setup_dma_ops(struct device *dev, struct iommu_domain *domain)
++{
++}
++
 +static inline void iommu_teardown_dma_ops(struct device *dev)
- {
--	return -EINVAL;
- }
- 
- static inline int iommu_get_dma_cookie(struct iommu_domain *domain)
-@@ -44,6 +42,28 @@ static inline void iommu_put_dma_cookie(struct iommu_domain *domain)
- {
- }
- 
++{
++}
++
++static inline int iommu_get_dma_cookie(struct iommu_domain *domain)
++{
++	return -ENODEV;
++}
++
++static inline void iommu_put_dma_cookie(struct iommu_domain *domain)
++{
++}
++
 +#endif
 +
 +#ifdef CONFIG_IOMMU_DMA
 +
-+void iommu_put_msi_cookie(struct iommu_domain *domain);
-+
-+int iommu_dma_init_fq(struct iommu_domain *domain);
-+
-+void iommu_dma_get_resv_regions(struct device *dev, struct list_head *list);
-+
-+int iommu_dma_sw_msi(struct iommu_domain *domain, struct msi_desc *desc,
-+		     phys_addr_t msi_addr);
-+
-+extern bool iommu_dma_forcedac;
-+
-+#else /* CONFIG_IOMMU_DMA */
-+
-+static inline int iommu_dma_init_fq(struct iommu_domain *domain)
-+{
-+	return -EINVAL;
-+}
-+
+ void iommu_put_msi_cookie(struct iommu_domain *domain);
+ 
+ int iommu_dma_init_fq(struct iommu_domain *domain);
+@@ -26,24 +59,11 @@ extern bool iommu_dma_forcedac;
+ 
+ #else /* CONFIG_IOMMU_DMA */
+ 
+-static inline void iommu_setup_dma_ops(struct device *dev)
+-{
+-}
+-
+ static inline int iommu_dma_init_fq(struct iommu_domain *domain)
+ {
+ 	return -EINVAL;
+ }
+ 
+-static inline int iommu_get_dma_cookie(struct iommu_domain *domain)
+-{
+-	return -ENODEV;
+-}
+-
+-static inline void iommu_put_dma_cookie(struct iommu_domain *domain)
+-{
+-}
+-
  static inline void iommu_put_msi_cookie(struct iommu_domain *domain)
  {
  }
 diff --git a/drivers/iommu/iommu.c b/drivers/iommu/iommu.c
-index 34c06fb26..542ccfe70 100644
+index 34c06fb26..a5f49c7e4 100644
 --- a/drivers/iommu/iommu.c
 +++ b/drivers/iommu/iommu.c
-@@ -570,9 +570,16 @@ static void iommu_deinit_device(struct device *dev)
+@@ -570,9 +570,11 @@ static void iommu_deinit_device(struct device *dev)
  	dev->iommu_group = NULL;
  	module_put(ops->owner);
  	dev_iommu_free(dev);
-+/*
- #ifdef CONFIG_IOMMU_DMA
- 	dev->dma_iommu = false;
- #endif
-+*/
+-#ifdef CONFIG_IOMMU_DMA
+-	dev->dma_iommu = false;
+-#endif
 +/*
 +	if (IS_ENABLED(CONFIG_IOMMU_DMA))
 +		dev_clear_dma_iommu(dev);
@@ -855,15 +854,16 @@ index 34c06fb26..542ccfe70 100644
  }
  
  static struct iommu_domain *pasid_array_entry_to_domain(void *entry)
-@@ -649,6 +656,7 @@ static int __iommu_probe_device(struct device *dev, struct list_head *group_list
+@@ -649,7 +651,7 @@ static int __iommu_probe_device(struct device *dev, struct list_head *group_list
  	}
  
  	if (group->default_domain)
-+//		iommu_setup_dma_ops(dev, group->default_domain);
- 		iommu_setup_dma_ops(dev);
+-		iommu_setup_dma_ops(dev);
++		iommu_setup_dma_ops(dev, group->default_domain);
  
  	mutex_unlock(&group->mutex);
-@@ -1842,18 +1850,6 @@ static int iommu_get_default_domain_type(struct iommu_group *group,
+ 
+@@ -1842,18 +1844,6 @@ static int iommu_get_default_domain_type(struct iommu_group *group,
  
  	lockdep_assert_held(&group->mutex);
  
@@ -882,7 +882,7 @@ index 34c06fb26..542ccfe70 100644
  	for_each_group_device(group, gdev) {
  		driver_type = iommu_get_def_domain_type(group, gdev->dev,
  							driver_type);
-@@ -1870,11 +1866,11 @@ static int iommu_get_default_domain_type(struct iommu_group *group,
+@@ -1870,11 +1860,11 @@ static int iommu_get_default_domain_type(struct iommu_group *group,
  	}
  
  	/*
@@ -898,17 +898,17 @@ index 34c06fb26..542ccfe70 100644
  		if (WARN_ON(driver_type == IOMMU_DOMAIN_DMA))
  			return -1;
  		if (!driver_type)
-@@ -1937,7 +1933,9 @@ static int bus_iommu_probe(const struct bus_type *bus)
+@@ -1937,7 +1927,8 @@ static int bus_iommu_probe(const struct bus_type *bus)
  			return ret;
  		}
  		for_each_group_device(group, gdev)
-+//			iommu_setup_dma_ops(gdev->dev, group->default_domain);
- 			iommu_setup_dma_ops(gdev->dev);
+-			iommu_setup_dma_ops(gdev->dev);
++			iommu_setup_dma_ops(gdev->dev, group->default_domain);
 +
  		mutex_unlock(&group->mutex);
  
  		/*
-@@ -2085,6 +2083,7 @@ void iommu_domain_free(struct iommu_domain *domain)
+@@ -2085,6 +2076,7 @@ void iommu_domain_free(struct iommu_domain *domain)
  {
  	switch (domain->cookie_type) {
  	case IOMMU_COOKIE_DMA_IOVA:
@@ -916,14 +916,15 @@ index 34c06fb26..542ccfe70 100644
  		iommu_put_dma_cookie(domain);
  		break;
  	case IOMMU_COOKIE_DMA_MSI:
-@@ -3135,6 +3134,7 @@ static ssize_t iommu_group_store_type(struct iommu_group *group,
+@@ -3135,7 +3127,7 @@ static ssize_t iommu_group_store_type(struct iommu_group *group,
  
  	/* Make sure dma_ops is appropriatley set */
  	for_each_group_device(group, gdev)
-+//		iommu_setup_dma_ops(gdev->dev, group->default_domain);
- 		iommu_setup_dma_ops(gdev->dev);
+-		iommu_setup_dma_ops(gdev->dev);
++		iommu_setup_dma_ops(gdev->dev, group->default_domain);
  
  out_unlock:
+ 	mutex_unlock(&group->mutex);
 diff --git a/drivers/iommu/sun50i-iommu.c b/drivers/iommu/sun50i-iommu.c
 index 17f79ce77..677ad1411 100644
 --- a/drivers/iommu/sun50i-iommu.c
