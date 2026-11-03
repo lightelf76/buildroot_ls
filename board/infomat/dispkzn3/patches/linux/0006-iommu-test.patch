@@ -721,10 +721,29 @@ index 70d29b14d..6610a7e79 100644
  	help
  	  Support for the IOMMU introduced in the Allwinner H6 SoCs.
 diff --git a/drivers/iommu/dma-iommu.c b/drivers/iommu/dma-iommu.c
-index 9da773ba5..b6465bc38 100644
+index 9da773ba5..158feeb4c 100644
 --- a/drivers/iommu/dma-iommu.c
 +++ b/drivers/iommu/dma-iommu.c
-@@ -2125,6 +2125,11 @@ void iommu_setup_dma_ops(struct device *dev)
+@@ -2110,12 +2110,16 @@ EXPORT_SYMBOL_GPL(dma_iova_destroy);
+ void iommu_setup_dma_ops(struct device *dev)
+ {
+ 	struct iommu_domain *domain = iommu_get_domain_for_dev(dev);
++	bool dma_iommu;
+ 
+ 	if (dev_is_pci(dev))
+ 		dev->iommu->pci_32bit_workaround = !iommu_dma_forcedac;
+ 
+-	dev->dma_iommu = iommu_is_dma_domain(domain);
+-	if (dev->dma_iommu && iommu_dma_init_domain(domain, dev))
++//	dev->dma_iommu = iommu_is_dma_domain(domain);
++//	if (dev->dma_iommu && iommu_dma_init_domain(domain, dev))
++	dma_iommu = iommu_is_dma_domain(domain);
++	dev_assign_dma_iommu(dev, dma_iommu);
++	if (dma_iommu && iommu_dma_init_domain(domain, dev))
+ 		goto out_err;
+ 
+ 	return;
+@@ -2125,6 +2129,11 @@ void iommu_setup_dma_ops(struct device *dev)
  	dev->dma_iommu = false;
  }
  
@@ -816,10 +835,10 @@ index eca201c1f..c69f84838 100644
  {
  }
 diff --git a/drivers/iommu/iommu.c b/drivers/iommu/iommu.c
-index 34c06fb26..b4581d79c 100644
+index 34c06fb26..542ccfe70 100644
 --- a/drivers/iommu/iommu.c
 +++ b/drivers/iommu/iommu.c
-@@ -570,9 +570,12 @@ static void iommu_deinit_device(struct device *dev)
+@@ -570,9 +570,16 @@ static void iommu_deinit_device(struct device *dev)
  	dev->iommu_group = NULL;
  	module_put(ops->owner);
  	dev_iommu_free(dev);
@@ -828,11 +847,15 @@ index 34c06fb26..b4581d79c 100644
  	dev->dma_iommu = false;
  #endif
 +*/
++/*
++	if (IS_ENABLED(CONFIG_IOMMU_DMA))
++		dev_clear_dma_iommu(dev);
++*/
 +	iommu_teardown_dma_ops(dev);
  }
  
  static struct iommu_domain *pasid_array_entry_to_domain(void *entry)
-@@ -649,6 +652,7 @@ static int __iommu_probe_device(struct device *dev, struct list_head *group_list
+@@ -649,6 +656,7 @@ static int __iommu_probe_device(struct device *dev, struct list_head *group_list
  	}
  
  	if (group->default_domain)
@@ -840,7 +863,7 @@ index 34c06fb26..b4581d79c 100644
  		iommu_setup_dma_ops(dev);
  
  	mutex_unlock(&group->mutex);
-@@ -1842,18 +1846,6 @@ static int iommu_get_default_domain_type(struct iommu_group *group,
+@@ -1842,18 +1850,6 @@ static int iommu_get_default_domain_type(struct iommu_group *group,
  
  	lockdep_assert_held(&group->mutex);
  
@@ -859,7 +882,7 @@ index 34c06fb26..b4581d79c 100644
  	for_each_group_device(group, gdev) {
  		driver_type = iommu_get_def_domain_type(group, gdev->dev,
  							driver_type);
-@@ -1870,11 +1862,11 @@ static int iommu_get_default_domain_type(struct iommu_group *group,
+@@ -1870,11 +1866,11 @@ static int iommu_get_default_domain_type(struct iommu_group *group,
  	}
  
  	/*
@@ -875,7 +898,7 @@ index 34c06fb26..b4581d79c 100644
  		if (WARN_ON(driver_type == IOMMU_DOMAIN_DMA))
  			return -1;
  		if (!driver_type)
-@@ -1937,7 +1929,9 @@ static int bus_iommu_probe(const struct bus_type *bus)
+@@ -1937,7 +1933,9 @@ static int bus_iommu_probe(const struct bus_type *bus)
  			return ret;
  		}
  		for_each_group_device(group, gdev)
@@ -885,7 +908,7 @@ index 34c06fb26..b4581d79c 100644
  		mutex_unlock(&group->mutex);
  
  		/*
-@@ -2085,6 +2079,7 @@ void iommu_domain_free(struct iommu_domain *domain)
+@@ -2085,6 +2083,7 @@ void iommu_domain_free(struct iommu_domain *domain)
  {
  	switch (domain->cookie_type) {
  	case IOMMU_COOKIE_DMA_IOVA:
@@ -893,7 +916,7 @@ index 34c06fb26..b4581d79c 100644
  		iommu_put_dma_cookie(domain);
  		break;
  	case IOMMU_COOKIE_DMA_MSI:
-@@ -3135,6 +3130,7 @@ static ssize_t iommu_group_store_type(struct iommu_group *group,
+@@ -3135,6 +3134,7 @@ static ssize_t iommu_group_store_type(struct iommu_group *group,
  
  	/* Make sure dma_ops is appropriatley set */
  	for_each_group_device(group, gdev)
@@ -920,6 +943,73 @@ index 17f79ce77..677ad1411 100644
  	.device_group	= generic_single_device_group,
  	.domain_alloc_paging = sun50i_iommu_domain_alloc_paging,
  	.of_xlate	= sun50i_iommu_of_xlate,
+diff --git a/include/linux/device.h b/include/linux/device.h
+index 56e5a9314..6ffb326ca 100644
+--- a/include/linux/device.h
++++ b/include/linux/device.h
+@@ -488,12 +488,14 @@ struct device_physical_location {
+  * @DEV_FLAG_CAN_MATCH: The device has matched with a driver at least once or it
+  *		is in a bus (like AMBA) which can't check for matching drivers
+  *		until other devices probe successfully.
++ * @DEV_FLAG_DMA_IOMMU: Device is using default IOMMU implementation for DMA and 
++ *              does not rely on dma_ops structure.
+  * @DEV_FLAG_COUNT: Number of defined struct_device_flags.
+  */
+ enum struct_device_flags {
+ 	DEV_FLAG_READY_TO_PROBE = 0,
+ 	DEV_FLAG_CAN_MATCH = 1,
+-
++	DEV_FLAG_DMA_IOMMU = 2,
+ 	DEV_FLAG_COUNT
+ };
+ 
+@@ -587,8 +589,6 @@ enum struct_device_flags {
+  *		for dma allocations.  This flag is managed by the dma ops
+  *		instance from ->dma_supported.
+  * @dma_skip_sync: DMA sync operations can be skipped for coherent buffers.
+- * @dma_iommu: Device is using default IOMMU implementation for DMA and
+- *		doesn't rely on dma_ops structure.
+  * @flags:	DEV_FLAG_XXX flags. Use atomic bitfield operations to modify.
+  *
+  * At the lowest level, every device in a Linux system is represented by an
+@@ -708,10 +708,6 @@ struct device {
+ #ifdef CONFIG_DMA_NEED_SYNC
+ 	bool			dma_skip_sync:1;
+ #endif
+-#ifdef CONFIG_IOMMU_DMA
+-	bool			dma_iommu:1;
+-#endif
+-
+ 	DECLARE_BITMAP(flags, DEV_FLAG_COUNT);
+ };
+ 
+@@ -739,6 +735,7 @@ static inline bool dev_test_and_set_##accessor_name(struct device *dev) \
+ 
+ __create_dev_flag_accessors(ready_to_probe, DEV_FLAG_READY_TO_PROBE);
+ __create_dev_flag_accessors(can_match, DEV_FLAG_CAN_MATCH);
++__create_dev_flag_accessors(dma_iommu, DEV_FLAG_DMA_IOMMU);
+ 
+ #undef __create_dev_flag_accessors
+ 
+diff --git a/include/linux/iommu-dma.h b/include/linux/iommu-dma.h
+index a92b3ff9b..060f6e23a 100644
+--- a/include/linux/iommu-dma.h
++++ b/include/linux/iommu-dma.h
+@@ -7,12 +7,13 @@
+ #ifndef _LINUX_IOMMU_DMA_H
+ #define _LINUX_IOMMU_DMA_H
+ 
++#include <linux/device.h>
+ #include <linux/dma-direction.h>
+ 
+ #ifdef CONFIG_IOMMU_DMA
+ static inline bool use_dma_iommu(struct device *dev)
+ {
+-	return dev->dma_iommu;
++	return dev_dma_iommu(dev);
+ }
+ #else
+ static inline bool use_dma_iommu(struct device *dev)
 diff --git a/include/linux/iommu.h b/include/linux/iommu.h
 index c24271256..d0cba75e3 100644
 --- a/include/linux/iommu.h
