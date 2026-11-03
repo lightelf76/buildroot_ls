@@ -706,6 +706,20 @@ index 31a8409b9..8ca19322e 100644
  
  	/*
  	 * While this function can fail, we shouldn't do anything
+diff --git a/drivers/iommu/Kconfig b/drivers/iommu/Kconfig
+index 70d29b14d..6610a7e79 100644
+--- a/drivers/iommu/Kconfig
++++ b/drivers/iommu/Kconfig
+@@ -240,7 +240,8 @@ config SUN50I_IOMMU
+ 	bool "Allwinner H6 IOMMU Support"
+ 	depends on HAS_DMA
+ 	depends on ARCH_SUNXI || COMPILE_TEST
+-	select ARM_DMA_USE_IOMMU
++#	select ARM_DMA_USE_IOMMU
++	select IOMMU_DMA
+ 	select IOMMU_API
+ 	help
+ 	  Support for the IOMMU introduced in the Allwinner H6 SoCs.
 diff --git a/drivers/iommu/dma-iommu.c b/drivers/iommu/dma-iommu.c
 index 9da773ba5..b6465bc38 100644
 --- a/drivers/iommu/dma-iommu.c
